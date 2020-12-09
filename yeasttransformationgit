@@ -1,0 +1,166 @@
+#Import utensils for code to run
+from opentrons import simulate
+metadata = {'apiLevel': '2.8'}
+protocol = simulate.get_protocol_api('2.8')
+
+
+tc_mod = protocol.load_module('Thermocycler Module') 
+#temp. ramp might need to be adjusted to reach desired temperature quickly. 
+#4°C per sec
+tc_mod.open_lid()#has to be open to allow pipettes in. Could be closed during incubation and etc. 
+tc_mod.set_block_temperature(4)#heat to 42°C over the course of the protocol?
+
+temp_mod = protocol.load_module('temperature module',6)
+temp_mod.set_temperature(4)#sets tempertaure to 4°C. 
+
+num_colums=8
+
+#Labware
+plate=tc_mod.load_labware('corning_96_wellplate_360ul_flat', 7)
+#slot 7,8,10,11 are the only slots the thermocyclers can use. 
+
+tiprack_1=protocol.load_labware('opentrons_96_tiprack_300ul', "1")
+tiprack_2 = protocol.load_labware('opentrons_96_tiprack_300ul', "2")
+tiprack_3=protocol.load_labware('opentrons_96_tiprack_300ul', 3)
+tiprack_4=protocol.load_labware('opentrons_96_tiprack_300ul', 4)
+tiprack_5=protocol.load_labware('opentrons_96_tiprack_300ul', 5)
+tiprack_9=protocol.load_labware('opentrons_96_tiprack_300ul',9 )
+tiprack_10=protocol.load_labware('opentrons_96_tiprack_300ul',10 )
+tiprack_11=protocol.load_labware('opentrons_96_tiprack_300ul',11 )
+reservoir=temp_mod.load_labware('usascientific_12_reservoir_22ml',6)
+## A1 --> Water
+## A2 --> LiAc/TE
+## A3 --> PEG
+## A4 --> SSD
+## A5 --> Buffer of choice at end???
+## A6
+## A7 
+## A8
+## A9
+## A10
+## A11
+## A12 --> Trash
+
+#The water,LiAc/TE, 40% PEG, already incubated SSD, added to...
+# well or column? 12 is the trash. 
+alltiprack=[tiprack_1,tiprack_2]
+
+#pipettes
+p300multi=protocol.load_instrument('p300_multi_gen2', 'right', tip_racks=[tiprack_1, tiprack_2, tiprack_3, tiprack_4])
+
+
+#when you load an instrument you can only have one type of working pipette loaded at any one time. 
+protocol.max_speeds['Z'] = 10
+
+# Yeast Protocol
+
+#Dilute the overnight culture 1:100 into fresh media (check total volume for this?, if total volume 5ml re-adjust values)
+#--> code added here
+
+
+
+#Remove plate and grow culture (add conditions HERE) for 3.5-4.5h
+#centrifuge for 5 mins at 20°C, 3-6000g
+#User pop-up to check the plate is returned? 
+
+#Remove the media - choose volume less than the total to leave the pellet undistrubed 
+#--> code added here
+
+
+#Resuspend the pellets in 100ul sterile water
+for i in range(1,11):
+    p300multi.transfer(100, reservoir['A1'], plate.columns()[i], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always')
+
+#Take the plate out and centrifuge for 5 mins at 20°C, 3-6000g
+#Pop-up message asking the User if they are ready to proceed after centrifugation? 
+
+#Place the plate back on the deck and remove the water from the pellets. Take less than the total volume to avoid distrubing the pellet of cells.
+for i in range(1,11):
+    p300multi.transfer(90,plate.columns()[i],reservoir['A12'], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always')
+
+#Resuspend the pellets in 100ul water.
+for i in range(1,11):
+    p300multi.transfer(100, reservoir['A1'], plate.columns()[i], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always')
+ 
+#Take the plate out and centrifuge for 5 mins at 20°C, 3-6000g
+#Pop-up message asking the User if they are ready to proceed after centrifugation? 
+
+
+#Place the plate back on the deck and remove the water from the pellet. Take less than the total volume to avoid distrubing the pellet of cells.
+for i in range(1,11):
+    p300multi.transfer(80,plate.columns()[i],reservoir['A12'], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always')
+#Resuspend the pellet with 200ul of LiAc/TE. 
+for i in range(1,11):
+    p300multi.transfer(200, reservoir['A2'], plate.columns()[i], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always',mix_after=(3,50))
+
+#Take the plate out and centrifuge for 5 mins at 20°C, 3-6000g
+#Need to add code here for the pop-out message asking the User if they are ready to proceed after centrifugation? 
+
+
+
+#Place the plate back onto the deck and remove the LiAc/TE buffer, take less than the total volume to avoid disturbing the pellet.
+for i in range(1,11):
+    p300multi.transfer(180,plate.columns()[i],reservoir['A12'], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always')
+#Resuspend the pellet with 50ul LiAc/TE. 
+for i in range(1,11):
+    p300multi.transfer(50, reservoir['A2'], plate.columns()[i], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always',mix_after=(3,50))
+#Add 5ul SSD. 
+for i in range(1,12):
+    p300multi.transfer(5, reservoir['A4'], plate.columns()[i], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always',mix_after=(3,50))
+
+#Move the mix to a new plate? Y/N ? 
+
+#Add the DNA constructs to the plate. 
+#Replicates? or high-throughput with many plasmids tested at once? - do we need a User pop-up message for this? 
+#Their protocol suggests 1ul DNA is maximum - may need to find a way to get smaller volumes into the wells 
+#... Unless the DNA is diluted prior to being added to the plates
+#This would mean 2ul could be added to each well (lower limit of a p20)
+# 
+#
+#Add 100ul PEG (extra mixing - pipette speed slower).
+for i in range(1,11):
+    p300multi.transfer(100, reservoir['A3'], plate.columns()[i], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always',mix_after=(5,100))
+
+#Incubate in the spinner at 30°C for 30 minutes??? - maybe not the centrifuge ???
+#tc_mod.set_block_temperature(30, hold_time_minutes=30, block_max_volume=355)
+#tc_mod.close_lid()
+
+
+#Heatshock 42°C for User defined time (15mins - hours)
+tc_mod.set_block_temperature(42, hold_time_minutes=15, block_max_volume=355)
+
+#Remove plate and centrifuge for 5 mins at 20°C, 3-6000g
+
+#User pop-up to select the plate is returned? 
+
+#Remove PEG (remove little less than total volume to avoid disturbing the pellet)
+for i in range(1,11):
+    p300multi.transfer(330,plate.columns()[i],reservoir['A12'], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always')
+
+
+#Resuspend the pellet of cells in 1ml (1000ul) of the chosen buffer 
+for i in range(1,11):
+    p300multi.transfer(1000, reservoir['A5'], plate.columns()[i], touch_tip=True, blow_out=True,blowout_location='destination well', new_tip='always',mix_after=(3,300))
+
+
+#Take plate to the incubator at 30°C, for User determined length of time
+#Plate taken to the centrifuge for 5 mins at 20°C, 3-6000g
+
+#User pop-up to confirm the plate is returned?
+
+
+#The 1ml (1000ul) buffer is removed and discarded 
+#--> code added here
+
+
+#Sterile water, 100ul, is added to all wells to resuspend the pellet (slow mixing)
+#--> code added here
+
+
+
+#User pop-up "PROTOCOL COMPLETE! :)"
+
+
+#User removes the plate.
+#User may want to apply gentle shaking to the plate once it has been removed. 
+
